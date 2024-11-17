@@ -1,5 +1,6 @@
 import './App.css';
-// import { useState, useEffect } from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import HomePage from './pages/HomePage';
 import ErrorPage from './pages/ErrorPage';
 import QuestionPage from './pages/QuestionPage';
@@ -16,11 +17,22 @@ const router = createBrowserRouter([
 		element: <QuestionPage/>
 	}
 ])
+
+const darkTheme = createTheme({
+	palette: {
+		mode: 'dark',
+	},
+});
+
+
 const App = () => {
 	return (
-		<div className="App">
-			<RouterProvider router={router}/>
-		</div>
+		<ThemeProvider theme={darkTheme}>
+		<CssBaseline />
+			<div className="App">
+				<RouterProvider router={router}/>
+			</div>
+		</ThemeProvider>
 	);
 }
 
