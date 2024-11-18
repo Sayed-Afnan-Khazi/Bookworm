@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import ErrorPage from './pages/ErrorPage';
 import QuestionPage from './pages/QuestionPage';
 import {createBrowserRouter, RouterProvider} from 'react-router-dom';
+import NavBar from './components/NavBar';
 
 const router = createBrowserRouter([
 	{
@@ -30,6 +31,7 @@ const App = () => {
 		<ThemeProvider theme={darkTheme}>
 		<CssBaseline />
 			<div className="App">
+				<NavBar/>
 				<RouterProvider router={router}/>
 			</div>
 		</ThemeProvider>
