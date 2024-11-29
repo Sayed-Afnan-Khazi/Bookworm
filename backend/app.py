@@ -6,11 +6,33 @@ from flask_socketio import SocketIO, emit
 
 from gemini_wrap import answer_question
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as GoogleRequests
+from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
+from dotenv import load_dotenv
+load_dotenv()
+
+# Connect to mongodb
+import pymongo
+import json
+client = pymongo.MongoClient(os.getenv('MONGO_URI'))
+db = client['Book-keeper']
+users = db['users']
+
+if db is None:
+    raise Warning("The database, Book-keeper does not exist. Please check if the database is online and has been set up correctly.")
+
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_SECRET_KEY = os.getenv('GOOGLE_SECRET_KEY')
+
 # App config
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+# Initialize the JWT Manager
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Replace with your own secret key
+jwt = JWTManager(app)
 
 app.config['UPLOAD_FOLDER'] = './pdfs'
 ALLOWED_EXTENSIONS = ['pdf']
@@ -60,6 +82,59 @@ def handle_question(data):
         #     emit('answer_chunk',{'text':str(chunk)})
     except Exception as e:
         emit('error', {'message': str(e)})
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    req_data = request.get_json()
+    credential = req_data.get('credential')
+    if not credential:
+        return jsonify({'error': 'No credentials provided'}), 400
+    try:
+        # Verify the token
+        idinfo = id_token.verify_oauth2_token(credential, GoogleRequests.Request(), GOOGLE_CLIENT_ID)
+
+        # ID token is valid; get the user's Google Account information
+        userid = idinfo['sub']
+        email = idinfo.get('email')
+        name = idinfo.get('name')
+        picture = idinfo.get('picture')
+
+        # Create or update the user in the database 
+        user = users.find_one({'email': email})
+        if not user:
+            user = {
+                'email': email,
+                'name': name,
+                # 'picture': picture
+            }
+            users.insert_one(user)
+        else:
+            users.update_one({'email': email}, {'$set': {'name': name}})
+
+        # Create token
+        access_token = create_access_token(identity=email)
+        res = jsonify({'status': 'success', 'access_token_cookie': access_token,'user': json.loads(json.dumps(user, default=str))})
+        return res, 200
+
+    except ValueError:
+        # Invalid token
+        return jsonify({'error': 'Invalid token'}), 400
+    
+
+@app.route('/api/check-auth', methods=['GET'])
+@jwt_required(locations=['headers'])
+def check_auth():
+    # jwt_required() will make sure the user has a valid JWT before calling this endpoint
+    current_user = get_jwt_identity()
+    # Fetch user details if necessary
+    user = {'email': current_user}
+    return jsonify({'user': user}), 200
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    res = jsonify({'message': 'Logged out'})
+    res.set_cookie('access_token_cookie', '', max_age=0)
+    return res, 200
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=8000)

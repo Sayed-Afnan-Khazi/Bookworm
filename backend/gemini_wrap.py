@@ -11,7 +11,7 @@ def answer_question(question_text):
 	question_text: str'''
 	genai.configure(api_key=os.environ['API_KEY'])
 	model = genai.GenerativeModel("gemini-1.5-flash")
-	sample_pdf = genai.upload_file("./pdfs/Introduction.pdf")
+	sample_pdf = genai.upload_file("/Users/afnan/Developer/Book-keeper/backend/pdfs/SayedAfnanKhaziResume.pdf")
 	response = model.generate_content([question_text, sample_pdf], stream=True)
 
 	return response

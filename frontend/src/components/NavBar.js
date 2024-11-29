@@ -4,14 +4,18 @@ import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import AccountCircle from '@mui/icons-material/AccountCircle';
+import Avatar from '@mui/material/Avatar';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import NotebookSelector from './NotebookSelector';
+import { useAuth } from '../hooks/Auth';
+import { useNavigate } from 'react-router-dom';
 
 export default function NavBar() {
-  const [auth, setAuth] = React.useState(true);
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const { isLoggedIn, user, handleLogout } = useAuth();
+  const navigate = useNavigate();
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -21,6 +25,7 @@ export default function NavBar() {
     setAnchorEl(null);
   };
 
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
@@ -28,7 +33,7 @@ export default function NavBar() {
           <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>
             Book-keeper
           </Typography>
-          {auth && (
+          {isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <NotebookSelector />
               <IconButton
@@ -38,8 +43,10 @@ export default function NavBar() {
                 aria-haspopup="true"
                 onClick={handleMenu}
                 color="inherit"
+                sx={{ height: '100%' }}
               >
-                <AccountCircle />
+                {console.log('User lol', user)}
+                <Avatar sx={{height:'30px', width:'30px'}} src={user.picture}></Avatar>
               </IconButton>
               <Menu
                 id="menu-appbar"
@@ -57,10 +64,44 @@ export default function NavBar() {
                 onClose={handleClose}
               >
                 <MenuItem onClick={handleClose}>Profile</MenuItem>
-                <MenuItem onClick={handleClose}>My account</MenuItem>
+                <MenuItem onClick={handleClose}>Settings</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </div>
-          )}
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="subtitle1" sx={{marginX: '6px'}}>
+                Not Logged In
+            </Typography>
+            <IconButton
+            size="large"
+            aria-label="Not logged in icon"
+            aria-controls="menu-appbar"
+            aria-haspopup="true"
+            onClick={handleMenu}
+            color="inherit"
+          >
+            <PersonOffIcon />
+          </IconButton>
+          <Menu
+            id="menu-appbar"
+            anchorEl={anchorEl}
+            anchorOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            open={Boolean(anchorEl)}
+            onClose={handleClose}
+          >
+            <MenuItem onClick={()=>navigate('/login')}>Login</MenuItem>
+          </Menu>
+          </div>)
+          }
         </Toolbar>
       </AppBar>
     </Box>

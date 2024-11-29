@@ -54,7 +54,7 @@ const QuestionPage = () => {
     const [isLoading, setIsLoading] = useState(false); // Add loading state
 
     useEffect(() => {
-        const newSocket = io('http://localhost:8000/');
+        const newSocket = io('/');
         newSocket.on('answer_chunk', (data) => {
             console.log("Receiving from socket:",data.text)
             setIsLoading(false);
@@ -85,6 +85,7 @@ const QuestionPage = () => {
 
     return (
           <Container>
+            
             <div style={{
                 flex: 1,
                 marginBottom: '80px',
