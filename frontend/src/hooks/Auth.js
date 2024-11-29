@@ -7,7 +7,7 @@ const authContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState(null);
-    const [isAuthLoading, setIsAuthLoading] = useState(true);
+    const [isAuthLoading, setIsAuthLoading] = useState(true); // Needed to handle the async loading state of the auth context, other components were pulling the wrong values of state from the context before this was added.
 
     // Function to check authentication status
     const checkAuthStatus = async () => {
