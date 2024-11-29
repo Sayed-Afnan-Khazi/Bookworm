@@ -7,6 +7,7 @@ const authContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState(null);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
 
     // Function to check authentication status
     const checkAuthStatus = async () => {
@@ -37,7 +38,9 @@ export const AuthProvider = ({ children }) => {
             setIsLoggedIn(true);
             setUser(data.user);
             console.log('useEffect ran: data.user :>> ', data.user);
-            checkAuthStatus();
+            checkAuthStatus().finally(()=>setIsAuthLoading(false));
+        } else {
+            setIsAuthLoading(false);
         }
     }, []);
 
@@ -76,7 +79,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
     return (
-        <authContext.Provider value={{ isLoggedIn, handleLogin, user , handleLogout}}>
+        <authContext.Provider value={{ isLoggedIn, handleLogin, user , handleLogout, isAuthLoading}}>
             {children}
         </authContext.Provider>
     );

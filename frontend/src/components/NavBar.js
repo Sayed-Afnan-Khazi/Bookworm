@@ -16,7 +16,7 @@ export default function NavBar() {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const { isLoggedIn, user, handleLogout } = useAuth();
   const navigate = useNavigate();
-
+  console.log('isLoggedIn :>> ', isLoggedIn);
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
