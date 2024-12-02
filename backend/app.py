@@ -18,6 +18,7 @@ import json
 client = pymongo.MongoClient(os.getenv('MONGO_URI'))
 db = client['Book-keeper']
 users = db['users']
+notebooks = db['notebooks']
 
 if db is None:
     raise Warning("The database, Book-keeper does not exist. Please check if the database is online and has been set up correctly.")
@@ -105,15 +106,24 @@ def login():
             user = {
                 'email': email,
                 'name': name,
-                # 'picture': picture
+                'picture': picture
             }
-            users.insert_one(user)
+            user_id = users.insert_one(user).inserted_id
+            default_notebook = {
+                'owner': user_id,
+                'name': 'Starter Notebook',
+                'notes': []
+            }
+            notebooks.insert_one(default_notebook)
         else:
             users.update_one({'email': email}, {'$set': {'name': name}})
 
+        user_id = user['_id']
+        user_notebooks = list(notebooks.find({'owner': user_id}))
+
         # Create token
         access_token = create_access_token(identity=email)
-        res = jsonify({'status': 'success', 'access_token_cookie': access_token,'user': json.loads(json.dumps(user, default=str))})
+        res = jsonify({'status': 'success', 'access_token_cookie': access_token,'user': json.loads(json.dumps(user, default=str)),'notebooks': [json.loads(json.dumps(nb, default=str)) for nb in user_notebooks]})
         return res, 200
 
     except ValueError:
@@ -129,6 +139,7 @@ def check_auth():
     # Fetch user details if necessary
     user = {'email': current_user}
     return jsonify({'user': user}), 200
+
 
 @app.route('/api/logout', methods=['POST'])
 def logout():

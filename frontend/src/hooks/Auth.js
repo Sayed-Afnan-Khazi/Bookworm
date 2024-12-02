@@ -6,7 +6,7 @@ const authContext = createContext();
 // context Provider
 export const AuthProvider = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [user, setUser] = useState(null);
+    const [user_data, setUserData] = useState(null);
     const [isAuthLoading, setIsAuthLoading] = useState(true); // Needed to handle the async loading state of the auth context, other components were pulling the wrong values of state from the context before this was added.
 
     // Function to check authentication status
@@ -20,15 +20,15 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 const data = await response.json();
                 setIsLoggedIn(true);
-                console.log('checkAuth ran: data.user :>> ', data.user);
+                console.log('checkAuth ran: data :>> ', data);
             } else {
                 setIsLoggedIn(false);
-                setUser(null);
+                setUserData(null);
             }
         } catch (error) {
             console.error('Error checking auth status:', error);
             setIsLoggedIn(false);
-            setUser(null);
+            setUserData(null);
         }
     };
 
@@ -36,8 +36,8 @@ export const AuthProvider = ({ children }) => {
         if (localStorage.getItem('data')) {
             const data = JSON.parse(localStorage.getItem('data'));
             setIsLoggedIn(true);
-            setUser(data.user);
-            console.log('useEffect ran: data.user :>> ', data.user);
+            setUserData(data);
+            console.log('useEffect ran: data :>> ', data);
             checkAuthStatus().finally(()=>setIsAuthLoading(false));
         } else {
             setIsAuthLoading(false);
@@ -57,8 +57,8 @@ export const AuthProvider = ({ children }) => {
             if (data) {
                 console.log('Login Successful', data);
                 setIsLoggedIn(true);
-                setUser(data.user); // The user state will also contain the user's name, notebooks.
-                console.log('login ran: data.user :>> ', data.user);
+                setUserData(data); // The user state will also contain the user's name, notebooks.
+                console.log('login ran: data :>> ', data);
                 localStorage.setItem('data', JSON.stringify(data));
             } else {
                 console.log('Login Failed');
@@ -76,10 +76,10 @@ export const AuthProvider = ({ children }) => {
         setIsLoggedIn(false);
         googleLogout();
         localStorage.removeItem('data');
-        setUser(null);
+        setUserData(null);
     };
     return (
-        <authContext.Provider value={{ isLoggedIn, handleLogin, user , handleLogout, isAuthLoading}}>
+        <authContext.Provider value={{ isLoggedIn, handleLogin, user_data , handleLogout, isAuthLoading}}>
             {children}
         </authContext.Provider>
     );

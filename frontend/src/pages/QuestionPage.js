@@ -73,6 +73,13 @@ const QuestionPage = () => {
     //   console.log(questionText)
     // },[questionText])
 
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            onFormSubmit(event);
+        }
+    };
+
     const onFormSubmit = (event) => {
         event.preventDefault();
         console.log(questionText);
@@ -96,7 +103,7 @@ const QuestionPage = () => {
                         <Skeleton variant="text" sx={{ fontSize: '1rem', marginBottom: 1 }} width="80%" />
                         <Skeleton variant="text" sx={{ fontSize: '1rem', marginBottom: 1 }} width="70%" />
                         <Skeleton variant="text" sx={{ fontSize: '1rem', marginBottom: 1 }} width="75%" />
-                        <Skeleton variant="text" sx={{ fontSize: '1rem', marginBottom: 1 }} width="60%" />
+                        <Skeleton variant="text" sx={{ fontSize: '1rem', marginBottom: 1 }} width="80%" />
                     </>
                 ) : (
                     answer && <ReactMarkdown>{answer}</ReactMarkdown>
@@ -124,7 +131,7 @@ const QuestionPage = () => {
                         <AttachFileIcon />
                     </IconButton>
                 </InputAdornment>
-                <Textarea aria-label="empty textarea" maxRows={5} placeholder="Ask a question..." value={questionText} onChange={(e)=>setQuestionText(e.target.value)}/> 
+                <Textarea aria-label="empty textarea" maxRows={5} placeholder="Ask a question..." value={questionText} onChange={(e)=>setQuestionText(e.target.value)} onKeyDown={handleKeyDown}/> 
                 <InputAdornment position="end">
                     <IconButton edge="end" sx={{ color: '#ccc' }} onClick={onFormSubmit}>
                         <SendIcon/>

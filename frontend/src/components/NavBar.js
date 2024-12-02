@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function NavBar() {
   const [anchorEl, setAnchorEl] = React.useState(null);
-  const { isLoggedIn, user, handleLogout } = useAuth();
+  const { isLoggedIn, user_data, handleLogout } = useAuth();
   const navigate = useNavigate();
   console.log('isLoggedIn :>> ', isLoggedIn);
   const handleMenu = (event) => {
@@ -35,18 +35,19 @@ export default function NavBar() {
           </Typography>
           {isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <NotebookSelector />
+              {console.log('user_data :>> ', user_data)}
+              <NotebookSelector NotebookList={user_data.notebooks.map((notebook) => notebook.name)}/>
               <IconButton
                 size="large"
-                aria-label="account of current user"
+                aria-label="account of current user_data"
                 aria-controls="menu-appbar"
                 aria-haspopup="true"
                 onClick={handleMenu}
                 color="inherit"
                 sx={{ height: '100%' }}
               >
-                {console.log('User lol', user)}
-                <Avatar sx={{height:'30px', width:'30px'}} src={user.picture}></Avatar>
+                {console.log('user_data lol', user_data)}
+                <Avatar sx={{height:'30px', width:'30px'}} src={user_data.user.picture}></Avatar>
               </IconButton>
               <Menu
                 id="menu-appbar"

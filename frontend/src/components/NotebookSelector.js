@@ -1,12 +1,11 @@
-import * as React from 'react';
+import { useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 
-const NotebookList = ['Afnan Notes', 'Ashmaan Notes'];
-
-export default function NotebookSelector() {
-  const [value, setValue] = React.useState(NotebookList[0]);
-  const [inputValue, setInputValue] = React.useState('');
+export default function NotebookSelector({ NotebookList }) {
+  console.log('NotebookList :>> ', NotebookList);
+  const [value, setValue] = useState(NotebookList[0]);
+  const [inputValue, setInputValue] = useState('');
 
   return (
     <div>
