@@ -1,12 +1,10 @@
 import { useState } from "react";
 import {useNavigate} from 'react-router-dom';
-// import { useToast } from "../hooks/Toast";
 import { useAuth } from "../hooks/Auth";
 
 const HomePage = () => {
     const [file, setFile] = useState(null);
     const {isLoggedIn} = useAuth();
-    // const {setToast} = useToast()
     const navigate = useNavigate()
 
     const onFormSubmit = async (event) => {
@@ -14,7 +12,6 @@ const HomePage = () => {
 
         const formData = new FormData()
         formData.append('file',file)
-        // setToast("hi")
         let response = await fetch('/api/upload',{
             method:'POST',
             body: formData

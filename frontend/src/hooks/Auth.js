@@ -1,6 +1,6 @@
 import { googleLogout } from "@react-oauth/google";
 import { useState, createContext, useContext, useEffect } from "react";
-
+import { useToast } from "./Toast";
 const authContext = createContext();
 
 // context Provider
@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
     const [user_data, setUserData] = useState(null);
     const [isAuthLoading, setIsAuthLoading] = useState(true); // Needed to handle the async loading state of the auth context, other components were pulling the wrong values of state from the context before this was added.
 
+    const { setSuccessToast } = useToast();
     // Function to check authentication status
     const checkAuthStatus = async () => {
         try {
@@ -59,6 +60,7 @@ export const AuthProvider = ({ children }) => {
                 setIsLoggedIn(true);
                 setUserData(data); // The user state will also contain the user's name, notebooks.
                 console.log('login ran: data :>> ', data);
+                setSuccessToast('Logged in as ' + data.user.name);
                 localStorage.setItem('data', JSON.stringify(data));
             } else {
                 console.log('Login Failed');
@@ -77,6 +79,7 @@ export const AuthProvider = ({ children }) => {
         googleLogout();
         localStorage.removeItem('data');
         setUserData(null);
+        setSuccessToast('Logout Successful');
     };
     return (
         <authContext.Provider value={{ isLoggedIn, handleLogin, user_data , handleLogout, isAuthLoading}}>

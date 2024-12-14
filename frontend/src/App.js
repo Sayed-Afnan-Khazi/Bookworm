@@ -28,9 +28,9 @@ const darkTheme = createTheme({
 
 const App = () => {
 	return (
+		<ToastProvider>
 		<AuthProvider>
 			<GoogleOAuthProvider clientId="499048419040-ms4consf86oumjb2rtnebvb7d6j98kr2.apps.googleusercontent.com">
-				<ToastProvider>
 				<ThemeProvider theme={darkTheme}>
 				<CssBaseline />
 					<div className="App">
@@ -45,9 +45,9 @@ const App = () => {
 						</Router>
 					</div>
 				</ThemeProvider>
-				</ToastProvider>
 			</GoogleOAuthProvider>
 		</AuthProvider>
+		</ToastProvider>
 	);
 }
 
