@@ -119,7 +119,7 @@ const QuestionPage = () => {
             }}>
             <Box
                 sx={{
-                  backgroundColor: '#222',
+                  backgroundColor: '',
                   borderRadius: '25px',
                   display: 'flex',
                   alignItems: 'center',

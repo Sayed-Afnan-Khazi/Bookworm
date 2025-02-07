@@ -53,6 +53,7 @@ export const ToastProvider = ({ children }) => {
             <Snackbar
                 open={(successToast || errorToast || warningToast || infoToast) ? true : false}
                 anchorOrigin={{ vertical: 'top', horizontal:'center' }}
+                sx={{marginTop: '2vh'}}
                 autoHideDuration={2000}
                 onClose={handleSnackBarClose}
             >

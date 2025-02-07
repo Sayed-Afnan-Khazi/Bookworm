@@ -1,41 +1,37 @@
-import { useState } from "react";
-import {useNavigate} from 'react-router-dom';
-import { useAuth } from "../hooks/Auth";
+import { useNavigate } from 'react-router-dom';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import { useAuth } from '../hooks/Auth';
 
 const HomePage = () => {
-    const [file, setFile] = useState(null);
-    const {isLoggedIn} = useAuth();
-    const navigate = useNavigate()
+    const navigate = useNavigate();
+    const { isLoggedIn } = useAuth();
 
-    const onFormSubmit = async (event) => {
-        event.preventDefault()
-
-        const formData = new FormData()
-        formData.append('file',file)
-        let response = await fetch('/api/upload',{
-            method:'POST',
-            body: formData
-        })
-        console.log('response :>> ', response);
-        if (response.ok) {
-            response = await response.json()
-            navigate('/question')
+    const handleGetStarted = () => {
+        if (isLoggedIn) {
+            navigate('/notebooks');
+            return;
+        } else {
+            navigate('/login');
         }
-    }
+    };
 
-    const fileInputChange = (event) => {
-        setFile(event.target.files[0])
-    }
     return (
-        <div>
-            <h1>Book Keeper</h1>
-            <p>Upload your book and get summary</p>
-            {isLoggedIn ? <p>Logged in</p> : <p>Not logged in</p>}
-            <form onSubmit={onFormSubmit}>
-                <input type="file" onChange={fileInputChange}/>
-                <input type="submit" />
-            </form>
-        </div>
+        <Container maxWidth="md" sx={{ textAlign: 'center', mt: 8 }}>
+            <Typography variant="h1" component="h1" gutterBottom>
+                Book-Keeper
+            </Typography>
+            <Typography variant="h5" component="p" gutterBottom>
+                The better way to study, with AI.
+            </Typography>
+            <Box mt={4}>
+                <Button variant="contained" color="primary" onClick={handleGetStarted}>
+                    {isLoggedIn ? "View Notebooks" : "Get Started"}
+                </Button>
+            </Box>
+        </Container>
     );
 }
 

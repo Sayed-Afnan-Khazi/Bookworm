@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os, time, random
 from flask_socketio import SocketIO, emit
+import datetime
 
 from gemini_wrap import answer_question
 
@@ -112,7 +113,8 @@ def login():
             default_notebook = {
                 'owner': user_id,
                 'name': 'Starter Notebook',
-                'notes': []
+                'lastModified' : time.time_ns(),
+                'notes': [] # Will store the IDs of notes
             }
             notebooks.insert_one(default_notebook)
         else:
@@ -146,6 +148,43 @@ def logout():
     res = jsonify({'message': 'Logged out'})
     res.set_cookie('access_token_cookie', '', max_age=0)
     return res, 200
+
+@app.route('/api/notebooks', methods=['GET'])
+@jwt_required(locations=['headers'])
+def get_notebooks():
+    current_user = get_jwt_identity()
+    user = users.find_one({'email': current_user})
+    user_notebooks = list(notebooks.find({'owner': user['_id']}))
+    return jsonify({'notebooks': [json.loads(json.dumps(nb, default=str)) for nb in sorted(user_notebooks,key=lambda notebook: notebook['lastModified'],reverse=True)]})
+
+@app.route('/api/notebooks', methods=['POST'])
+@jwt_required(locations=['headers'])
+def create_notebook():
+    print("Hi")
+    current_user = get_jwt_identity()
+
+    user = users.find_one({'email': current_user})
+    req_data = request.get_json()
+    notebook_name = req_data.get('name')
+
+    if not notebook_name:
+        return jsonify({'error': 'No notebook name provided'}), 400
+    # print(user)
+    # if not user:
+    #     return jsonify({'error': 'User unauthorized'}), 401
+    
+    # Create and add the notebook
+    new_notebook = {
+        'owner': user['_id'],
+        'name': notebook_name,
+        'lastModified': time.time_ns(),
+        'notes': []
+    }
+    new_notebook_id = notebooks.insert_one(new_notebook).inserted_id
+
+    # Sending the new notebook's ID and name as confirmation.
+    return jsonify({'notebook_id': str(new_notebook_id),'notebook_name':notebook_name}), 201
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=8000)

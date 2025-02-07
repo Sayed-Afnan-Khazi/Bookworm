@@ -30,13 +30,13 @@ export default function NavBar() {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h5" component="div" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={()=>navigate('/')}>
             Book-keeper
           </Typography>
           {isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {console.log('user_data :>> ', user_data)}
-              <NotebookSelector NotebookList={user_data.notebooks.map((notebook) => notebook.name)}/>
+              {/* <NotebookSelector NotebookList={user_data.notebooks.map((notebook) => notebook.name)}/> */}
               <IconButton
                 size="large"
                 aria-label="account of current user_data"

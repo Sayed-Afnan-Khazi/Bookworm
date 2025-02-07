@@ -1,13 +1,13 @@
+import { Container } from "@mui/material";
 import { useRouteError } from "react-router-dom";
+import {Typography} from "@mui/material";
 
 const ErrorPage = () => {
-    const error = useRouteError();
-    console.error(error);
     return (
-        <div>
-            An error occurred.
-            {error.statusText || error.message}
-        </div>
+        <Container>
+            <Typography variant="h1" align="center">Oh oh.</Typography>
+            <Typography variant="h3" align="center">The page you were looking for was not found.</Typography>
+        </Container>
     )
 }
 
