@@ -3,7 +3,7 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os, time, random
 from flask_socketio import SocketIO, emit
-import datetime
+from bson import ObjectId
 
 from gemini_wrap import answer_question
 
@@ -17,9 +17,11 @@ load_dotenv()
 import pymongo
 import json
 client = pymongo.MongoClient(os.getenv('MONGO_URI'))
+
 db = client['Book-keeper']
 users = db['users']
 notebooks = db['notebooks']
+chats = db['chats']
 
 if db is None:
     raise Warning("The database, Book-keeper does not exist. Please check if the database is online and has been set up correctly.")
@@ -36,7 +38,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Replace with your own secret key
 jwt = JWTManager(app)
 
-app.config['UPLOAD_FOLDER'] = './pdfs'
+app.config['UPLOAD_FOLDER'] = './data'
 ALLOWED_EXTENSIONS = ['pdf']
 
 def check_if_upload_folder_exists():
@@ -51,19 +53,7 @@ def is_file_allowed(file_name):
 if not check_if_upload_folder_exists():
     raise Warning("The Upload folder has not been set or doesn't exist")
 
-@app.route('/api/upload',methods=["POST"])
-def home():
-    # Check if the file was sent or not
-    if 'file' not in request.files or request.files['file'].filename == '':
-        return jsonify('A file was not sent with the request.'), 400
-    # Save the file
-    file = request.files['file']
-    if is_file_allowed(file.filename):
-        file_name = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'],file_name))
-        return jsonify('File saved'),200
 
-    return jsonify("Something isn't right..."), 500
 
 @socketio.on('ask_question')
 def handle_question(data):
@@ -114,18 +104,20 @@ def login():
                 'owner': user_id,
                 'name': 'Starter Notebook',
                 'lastModified' : time.time_ns(),
-                'notes': [] # Will store the IDs of notes
+                'chats': [] # Will store the IDs of notes
             }
-            notebooks.insert_one(default_notebook)
+            notebook_id = notebooks.insert_one(default_notebook).inserted_id
+            os.mkdir(f"./data/user_{user_id}")
+            os.mkdir(f"./data/user_{user_id}/notebook_{notebook_id}")
+            os.mkdir(f"./data/user_{user_id}/notebook_{notebook_id}/notebook_global_files")
         else:
             users.update_one({'email': email}, {'$set': {'name': name}})
 
         user_id = user['_id']
-        user_notebooks = list(notebooks.find({'owner': user_id}))
 
         # Create token
         access_token = create_access_token(identity=email)
-        res = jsonify({'status': 'success', 'access_token_cookie': access_token,'user': json.loads(json.dumps(user, default=str)),'notebooks': [json.loads(json.dumps(nb, default=str)) for nb in user_notebooks]})
+        res = jsonify({'status': 'success', 'access_token_cookie': access_token,'user': json.loads(json.dumps(user, default=str))})
         return res, 200
 
     except ValueError:
@@ -160,7 +152,6 @@ def get_notebooks():
 @app.route('/api/notebooks', methods=['POST'])
 @jwt_required(locations=['headers'])
 def create_notebook():
-    print("Hi")
     current_user = get_jwt_identity()
 
     user = users.find_one({'email': current_user})
@@ -178,12 +169,101 @@ def create_notebook():
         'owner': user['_id'],
         'name': notebook_name,
         'lastModified': time.time_ns(),
-        'notes': []
+        'chats': []
     }
     new_notebook_id = notebooks.insert_one(new_notebook).inserted_id
+    user_id = user['_id']
+    # We will use some kind of object storage later
+    os.mkdir(f"./data/user_{user_id}/notebook_{new_notebook_id}")
+    os.mkdir(f"./data/user_{user_id}/notebook_{new_notebook_id}/notebook_global_files")
 
     # Sending the new notebook's ID and name as confirmation.
     return jsonify({'notebook_id': str(new_notebook_id),'notebook_name':notebook_name}), 201
+
+@app.route('/api/notebook/<notebook_id>', methods=['GET'])
+@jwt_required(locations=['headers'])
+def notebook_page(notebook_id):
+    if not ObjectId.is_valid(notebook_id):
+        return jsonify({'error':"This notebook either doesn't exist or you're not allowed to access it."}),401
+    current_user = get_jwt_identity()
+    user = users.find_one({'email': current_user})
+    nb = notebooks.find_one({'_id': ObjectId(notebook_id),'owner':user['_id']})
+    nb_chats = list(chats.find({'notebook_id':ObjectId(notebook_id)}))
+    if not nb:
+        return jsonify({'error':"This notebook either doesn't exist or you're not allowed to access it."}),401
+    else:
+        return jsonify({'notebook': json.loads(json.dumps(nb, default=str)),'chats':json.loads(json.dumps(nb_chats, default=str))})
+
+@app.route('/api/chat',methods = ['POST'])
+@jwt_required(locations=['headers'])
+def create_chat():
+    current_user = get_jwt_identity()
+
+    # Get the user and request data
+    user = users.find_one({'email': current_user})
+    req_data = request.get_json()
+    chat_name = req_data.get('chat_name')
+    notebook_id = req_data.get('notebook_id')
+    
+    # Check to make sure the notebook exists and it belongs to that user
+    if not notebook_id:
+        return jsonify({'error': 'No notebook_id provided'}), 400
+
+    nb = notebooks.find_one({'_id':ObjectId(notebook_id),'owner':user['_id']})
+
+    if not nb:
+        return jsonify({'error': 'Notebook or user invalid'}), 400
+    
+    if not chat_name:
+        return jsonify({'error': 'No chat name provided'}), 400
+
+    # Create a new chat 
+    new_chat = {
+        'notebook_id': nb['_id'],
+        'name': chat_name,
+        'lastModified': time.time_ns(),
+        'chat_history': ['Hello there!']
+    }
+
+    new_chat_id = chats.insert_one(new_chat).inserted_id
+    # Add that chat's _id to the notebook's list of chats
+    add_chat_result = notebooks.update_one({'_id': nb['_id']}, {'$push': {'chats': new_chat_id}})
+
+    if add_chat_result.modified_count:
+        user_id = user['_id']
+        notebook_id = nb['_id']
+        os.mkdir(f"./data/user_{user_id}/notebook_{notebook_id}/chat_{new_chat_id}_files")
+        return jsonify({'new_chat_id':str(new_chat_id)}), 200
+    else:
+        return jsonify({'error':'An error occurred while trying to create a new chat'})
+
+@app.route('/api/chat/upload',methods=["POST"])
+@jwt_required(locations=['headers'])
+def upload_chat_file():
+    # Check if the file was sent or not
+    if 'file' not in request.files or request.files['file'].filename == '':
+        return jsonify({"error":'A file was not sent with the request.'}), 400
+    
+    current_user = get_jwt_identity()
+
+    # Get the user and request data
+    user = users.find_one({'email': current_user})
+    user_id = user['_id']
+    req_data = request.get_json()
+    chat_id = req_data.get('chat_id')
+    notebook_id = req_data.get('notebook_id')
+    
+    # Save the file
+    file = request.files['file']
+    if is_file_allowed(file.filename):
+        file_name = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+user_id,'notebook_'+notebook_id,'chat_'+chat_id+'_files',file_name))
+        return jsonify('File saved'),200
+
+    return jsonify("Something isn't right..."), 500
+
+
+
 
 
 if __name__ == '__main__':
