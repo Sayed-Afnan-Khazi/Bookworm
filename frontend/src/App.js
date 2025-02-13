@@ -25,7 +25,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 const customTheme = createTheme({
 	typography: {
 		fontFamily: [
-		  'Margaret'
+		  'ClashGrotesk',
 		]
 	},
 	palette: {
@@ -64,6 +64,9 @@ const customTheme = createTheme({
 
 const App = () => {
 	return (
+		/// Add breadcrumbs sitewide
+		/// https://mui.com/material-ui/react-breadcrumbs/#integration-with-react-router
+		///
 		<ToastProvider>
 		<AuthProvider>
 			<GoogleOAuthProvider clientId="499048419040-ms4consf86oumjb2rtnebvb7d6j98kr2.apps.googleusercontent.com">
@@ -77,7 +80,7 @@ const App = () => {
 								<Route path="/login" element={<LoginPage/>}/>
 								<Route path="/notebooks" element={<ProtectedRoute><NotebooksList/></ProtectedRoute>}/>
 								<Route path="/notebook/:notebook_id" element={<ProtectedRoute><Notebook/></ProtectedRoute>} />
-								<Route path="/question" element={<ProtectedRoute><QuestionPage/></ProtectedRoute>}/>
+								<Route path="/chat/:chat_id" element={<ProtectedRoute><QuestionPage/></ProtectedRoute>} />
 								<Route path="*" element={<ErrorPage/>}/>
 							</Routes>
 						</Router>

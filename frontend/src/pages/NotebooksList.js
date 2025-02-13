@@ -4,6 +4,7 @@ import { useToast } from '../hooks/Toast';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
+  Card,
   Typography,
   Table,
   TableBody,
@@ -61,7 +62,7 @@ const NotebooksList = () => {
       let response = await fetch('/api/notebooks',{
         method: 'GET',
         headers: {'Authorization': `Bearer ${user_data.access_token_cookie}`},
-    })
+      })
       const data = await response.json()
       setNotebooks(data.notebooks);
     } else {
@@ -117,13 +118,14 @@ const NotebooksList = () => {
       <Typography variant="h2" component="h1" gutterBottom>
         Your Notebooks
       </Typography>
+      <Container sx={{backgroundColor: 'white',borderRadius: 5, padding: 2}}>
       {notebooks.length > 0 ? (
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell><Typography variant="h6">Notebook Name</Typography></TableCell>
-              <TableCell><Typography variant="h6">Last Modified</Typography></TableCell>
-              <TableCell><Typography variant="h6">Actions(TO DO LOL)</Typography></TableCell>
+              <TableCell sx={{textDecoration: 'underline'}}>Notebook Name</TableCell>
+              <TableCell sx={{textDecoration: 'underline'}}>Last Modified</TableCell>
+              <TableCell sx={{textDecoration: 'underline'}}>Actions(TO DO LOL)</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -186,6 +188,7 @@ const NotebooksList = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      </Container>
     </Container>
   );
 };
