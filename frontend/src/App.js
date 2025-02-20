@@ -13,9 +13,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import HomePage from './pages/HomePage';
 import ErrorPage from './pages/ErrorPage';
-import QuestionPage from './pages/QuestionPage';
+import Chat from './pages/Chat';
 import LoginPage from './pages/LoginPage';
-import UploadPage from './pages/UploadPage';
 import Notebook from './pages/Notebook';
 import NotebooksList from './pages/NotebooksList';
 
@@ -80,7 +79,7 @@ const App = () => {
 								<Route path="/login" element={<LoginPage/>}/>
 								<Route path="/notebooks" element={<ProtectedRoute><NotebooksList/></ProtectedRoute>}/>
 								<Route path="/notebook/:notebook_id" element={<ProtectedRoute><Notebook/></ProtectedRoute>} />
-								<Route path="/chat/:chat_id" element={<ProtectedRoute><QuestionPage/></ProtectedRoute>} />
+								<Route path="/chat/:chat_id" element={<ProtectedRoute><Chat/></ProtectedRoute>} />
 								<Route path="*" element={<ErrorPage/>}/>
 							</Routes>
 						</Router>

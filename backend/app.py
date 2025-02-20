@@ -2,14 +2,14 @@ from flask import Flask, jsonify, request, Response
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os, time, random
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, disconnect
 from bson import ObjectId
 
 from gemini_wrap import answer_question
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as GoogleRequests
-from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, JWTManager, jwt_required, get_jwt_identity, decode_token
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -47,33 +47,12 @@ def check_if_upload_folder_exists():
 
 def is_file_allowed(file_name):
     '''Checks if the file has an extension and whether that extension is within the ALLOWED_EXTENSIONS list.'''
-    print(file_name.split('.')[-1])
     return file_name and '.' in file_name and ALLOWED_EXTENSIONS and file_name.split('.')[-1] in ALLOWED_EXTENSIONS
 
 if not check_if_upload_folder_exists():
     raise Warning("The Upload folder has not been set or doesn't exist")
 
 
-
-@socketio.on('ask_question')
-def handle_question(data):
-    question = data.get('questionText')
-    if not question:
-        emit('error', {'message': 'No question received'})
-        return
-    def prawn():
-        for i in ["Contrary to popular belief, Lorem Ipsum is not simply random text."," It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor ","at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This b","ook is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, \"Lorem ipsum dolor sit amet..\", comes from a line in section 1.10.32.The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for ","those interested. Sections 1.10.32 and 1.10.33 from \"de Finibus Bonorum et Malorum\" by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham."]:
-            time.sleep(random.random())
-            yield i
-    try:
-        ans = answer_question(question_text=question)
-        for chunk in ans:
-            emit('answer_chunk', {'text': chunk.text})
-        # p = prawn()
-        # for chunk in p:
-        #     emit('answer_chunk',{'text':str(chunk)})
-    except Exception as e:
-        emit('error', {'message': str(e)})
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -160,7 +139,6 @@ def create_notebook():
 
     if not notebook_name:
         return jsonify({'error': 'No notebook name provided'}), 400
-    # print(user)
     # if not user:
     #     return jsonify({'error': 'User unauthorized'}), 401
     
@@ -237,30 +215,115 @@ def create_chat():
     else:
         return jsonify({'error':'An error occurred while trying to create a new chat'})
 
-@app.route('/api/chat/upload',methods=["POST"])
+@app.route('/api/chat/<chat_id>',methods=['GET'])
 @jwt_required(locations=['headers'])
-def upload_chat_file():
-    # Check if the file was sent or not
-    if 'file' not in request.files or request.files['file'].filename == '':
-        return jsonify({"error":'A file was not sent with the request.'}), 400
-    
+def get_chat(chat_id):
+    if not ObjectId.is_valid(chat_id):
+        return jsonify({'error':"This chat either doesn't exist or you're not allowed to access it."}),401
     current_user = get_jwt_identity()
 
-    # Get the user and request data
     user = users.find_one({'email': current_user})
-    user_id = user['_id']
-    req_data = request.get_json()
-    chat_id = req_data.get('chat_id')
-    notebook_id = req_data.get('notebook_id')
-    
-    # Save the file
-    file = request.files['file']
-    if is_file_allowed(file.filename):
-        file_name = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+user_id,'notebook_'+notebook_id,'chat_'+chat_id+'_files',file_name))
-        return jsonify('File saved'),200
+    chat = list(chats.aggregate([
+        # This joins `chats` with `notebooks` to find the ownerID (stored in the notebook where this chat belongs) of this chat
+        {"$match": {"_id": ObjectId(chat_id)}},  # Find chat by ID
+        {
+            "$lookup": {
+                "from": "notebooks", # Target collection
+                "localField": "notebook_id",  # Field in `chats`
+                "foreignField": "_id", # Field in `notebooks`
+                "as": "notebook" # Output field (array)
+            }
+        },
+        {"$unwind": "$notebook"},  # Convert resulting "notebook" array to object so that we can access it easily
+        {"$match": {"notebook.owner": ObjectId(user['_id'])}},  # Check ownership
+    ]))
 
-    return jsonify("Something isn't right..."), 500
+    if not chat:
+        return jsonify({'error':"This chat either doesn't exist or you're not allowed to access it."}),401
+    else:
+        return jsonify(json.loads(json.dumps(chat[0], default=str)))
+
+
+@socketio.on('ask_question')
+def handle_question(data):
+    question = data
+    chat_id = data['chat_id']
+    access_token = data['access_token']
+    decoded_token = decode_token(access_token)
+    current_user = decoded_token['sub']
+
+    if not ObjectId.is_valid(chat_id):
+        return jsonify({'error':"This chat either doesn't exist or you're not allowed to access it."}),401
+    
+    user = users.find_one({'email': current_user})
+
+    if not user:
+        return jsonify({'error': 'User unauthorized'}), 401
+
+    # Check if this user owns this chat_id
+    chat = list(chats.aggregate([
+        # This joins `chats` with `notebooks` to find the ownerID (stored in the notebook where this chat belongs) of this chat
+        {"$match": {"_id": ObjectId(chat_id)}},  # Find chat by ID
+        {
+            "$lookup": {
+                "from": "notebooks", # Target collection
+                "localField": "notebook_id",  # Field in `chats`
+                "foreignField": "_id", # Field in `notebooks`
+                "as": "notebook" # Output field (array)
+            }
+        },
+        {"$unwind": "$notebook"},  # Convert resulting "notebook" array to object so that we can access it easily
+        {"$match": {"notebook.owner": ObjectId(user['_id'])}},  # Check ownership
+    ]))
+
+    if not chat:
+        return jsonify({'error':"This chat either doesn't exist or you're not allowed to access it."}),401
+    
+    chat_history = chat[0]['chat_history']
+
+    if not question:
+        emit('error', {'message': 'No question received'})
+        return
+    try:
+        ans = answer_question(question_text=question['parts'][0],history=chat_history)
+        # Save the question in the chat history
+        chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"user","parts":[question['parts'][0]]}}})
+        complete_ans = ''
+        for chunk in ans:
+            print("sending from socket",chunk.text)
+            complete_ans += chunk.text
+            emit('answer_chunk', {'text': chunk.text})
+        # Save the answer to the chat history
+        chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"assistant","parts":[complete_ans]}}})
+    except Exception as e:
+        emit('error', {'message': str(e)})
+
+
+
+# @app.route('/api/chat/upload',methods=["POST"])
+# @jwt_required(locations=['headers'])
+# def upload_chat_file():
+#     # Check if the file was sent or not
+#     if 'file' not in request.files or request.files['file'].filename == '':
+#         return jsonify({"error":'A file was not sent with the request.'}), 400
+    
+#     current_user = get_jwt_identity()
+
+#     # Get the user and request data
+#     user = users.find_one({'email': current_user})
+#     user_id = user['_id']
+#     req_data = request.get_json()
+#     chat_id = req_data.get('chat_id')
+#     notebook_id = req_data.get('notebook_id')
+    
+#     # Save the file
+#     file = request.files['file']
+#     if is_file_allowed(file.filename):
+#         file_name = secure_filename(file.filename)
+#         file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+user_id,'notebook_'+notebook_id,'chat_'+chat_id+'_files',file_name))
+#         return jsonify('File saved'),200
+
+#     return jsonify("Something isn't right..."), 500
 
 
 

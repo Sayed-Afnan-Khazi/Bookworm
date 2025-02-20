@@ -119,7 +119,7 @@ const NotebooksList = () => {
         Your Notebooks
       </Typography>
       <Container sx={{backgroundColor: 'white',borderRadius: 5, padding: 2}}>
-      {notebooks.length > 0 ? (
+      {notebooks?.length > 0 ? (
         <Table>
           <TableHead>
             <TableRow>
@@ -142,7 +142,7 @@ const NotebooksList = () => {
                 <TableCell>
                   {getNotebookLastModifiedText(notebook.lastModified)}
                 </TableCell>
-                <TableCell><IconButton color='error'><DeleteOutlineIcon onClick={()=>setErrorToast('Attempting to delete Notebook.')}/></IconButton><IconButton color='secondary'><DriveFileRenameOutlineIcon></DriveFileRenameOutlineIcon></IconButton></TableCell>
+                <TableCell><IconButton color='error' onClick={()=>setErrorToast('Attempting to delete Notebook.')}><DeleteOutlineIcon/></IconButton><IconButton color='secondary'><DriveFileRenameOutlineIcon></DriveFileRenameOutlineIcon></IconButton></TableCell>
               </TableRow>
             ))}
           </TableBody>

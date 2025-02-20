@@ -79,11 +79,12 @@ const Notebook = () => {
       if (data.error) {
           setErrorToast(data.error)
           navigate('/')
+          return;
       }
       console.log('NB DATA',data)
-      setNotebookChats(data.chats);
-      setNotebookName(data.notebook.name);
-  }
+      setNotebookChats(data?.chats);
+      setNotebookName(data?.notebook.name);
+    }
 
     useEffect(()=>{
         getNotebookDetails();

@@ -10,7 +10,7 @@ const LoginPage = () => {
 
     useEffect(() => {
         if (isLoggedIn) {
-            navigate('/');
+            navigate('/notebooks');
         }
     });
 
