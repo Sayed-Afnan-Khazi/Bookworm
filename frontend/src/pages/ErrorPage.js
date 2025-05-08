@@ -1,5 +1,4 @@
 import { Container } from "@mui/material";
-import { useRouteError } from "react-router-dom";
 import {Typography} from "@mui/material";
 
 const ErrorPage = () => {

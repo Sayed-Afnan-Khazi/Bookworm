@@ -1,5 +1,4 @@
 import * as React from 'react';
-import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -8,7 +7,6 @@ import Avatar from '@mui/material/Avatar';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
-import NotebookSelector from './NotebookSelector';
 import { useAuth } from '../hooks/Auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,15 +26,13 @@ export default function NavBar() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={()=>navigate('/')}>
-            Book-keeper
+        <Toolbar sx={{'backgroundColor': '#eff2f6'}} position="static">
+          <Typography variant="h5" component="div" sx={{ flexGrow: 1, cursor: 'pointer',":hover": {color:"primary.main",textDecoration:'underline','textDecorationColor':'accent.main'} }} onClick={()=>navigate('/')}>
+            Bookworm
           </Typography>
           {isLoggedIn ? (
             <div style={{ display: 'flex', alignItems: 'center' }}>
               {console.log('user_data :>> ', user_data)}
-              {/* <NotebookSelector NotebookList={user_data.notebooks.map((notebook) => notebook.name)}/> */}
               <IconButton
                 size="large"
                 aria-label="account of current user_data"
@@ -104,7 +100,6 @@ export default function NavBar() {
           </div>)
           }
         </Toolbar>
-      </AppBar>
     </Box>
   );
 }

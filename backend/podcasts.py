@@ -50,15 +50,10 @@ def wave_file(filename, channels=1, rate=24000, sample_width=2):
         wf.setframerate(rate)
         yield wf
 def get_next_audio_filename(base_dir, base_name="audio"):
-    """Generates the next available filename in the sequence.
-
-    Args:
-        base_dir (str): the directory where the audio files are stored
-        base_name (str, optional): the base name of the file. Defaults to "audio".
-
-    Returns:
-        str: next available file path with the number incremented.
-    """
+    """Generates the next available filename in the sequence."""
+    # Create the directory if it doesn't exist
+    os.makedirs(base_dir, exist_ok=True)
+    
     i = 1
     while True:
         file_name = os.path.join(base_dir, f"{base_name}{i}.wav")
@@ -124,7 +119,7 @@ def transcript(doc_path):
   model = genai.GenerativeModel(
     model_name="gemini-2.0-flash-exp",
     generation_config=generation_config,
-    system_instruction="<intro>\nYou create podcats transcripts based on a pdf given to you. The podcasts are engaging and expressive, but talk ABOUT the pdf, not embodying it. You return nothing but the transcripts. Make the podcasts very human, sometimes speakers may only say \'Yeah exactly!\' or \'Mhmm\' \n</intro>\n<formatinfo>\nspeaker1 contains strings which are his transcript lines, every transcript line responds to the other's lines. same for speaker2, and they are seperated. Do not output ANYTHING else, NO CODEBLOCKS. speaker 1 and 2 SHOULD CONVERSE.\n</formatinfo>\n<additional>\n Speaker 1 should speak first, speaker 2 responds (in the speaker 2 transcript lines obviously) and so on. Also make only 3 lines for each speaker please. JUST 3 lines per speaker, not big lines as well\n</additional>",
+    system_instruction="<intro>\nYou create podcasts transcripts based on a pdf given to you. The podcasts are engaging and expressive, but talk ABOUT the pdf, not embodying it. You return nothing but the transcripts. Make the podcasts very human, sometimes speakers may only say \'Yeah exactly!\' or \'Mhmm\' \n</intro>\n<formatinfo>\nspeaker1 contains strings which are his transcript lines, every transcript line responds to the other's lines. same for speaker2, and they are seperated. Do not output ANYTHING else, NO CODEBLOCKS. speaker 1 and 2 SHOULD CONVERSE.\n</formatinfo>\n<additional>\n Speaker 1 should speak first, speaker 2 responds (in the speaker 2 transcript lines obviously) and so on. Also make only 3 lines for each speaker please. JUST 3 lines per speaker, not big lines as well\n</additional>",
   )
   
   # Read and encode the local file
@@ -158,8 +153,32 @@ async def speak_transcript(transcript_json):
         for line in transcript["speaker2"]:
              await say(line, "Aoede")
 async def podcast(pdf):
-  await speak_transcript(transcript(pdf))
-  merge_audio_files(speaker1_files, speaker2_files, output_path)
+    # Clear previous audio files
+    for file_path in speaker1_files + speaker2_files:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    
+    # Create the output directory if it doesn't exist
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    # Get transcript and generate audio
+    generated_files = []
+    transcript_data = transcript(pdf)
+    await speak_transcript(transcript_data)
+    
+    # Get all generated files
+    podcasts_dir = 'backend/podcasts'
+    audio_files = sorted([os.path.join(podcasts_dir, f) for f in os.listdir(podcasts_dir) 
+                         if f.startswith('audio') and f.endswith('.wav')])
+    
+    # Split files between speakers (alternating)
+    speaker1_files = audio_files[::2]  # Even indices (0, 2, 4...)
+    speaker2_files = audio_files[1::2]  # Odd indices (1, 3, 5...)
+    
+    # Merge the audio files
+    merge_audio_files(speaker1_files, speaker2_files, output_path)
+    
+    return output_path
 
 if __name__ == "__main__":
-  asyncio.run(podcast("/Users/afnan/Developer/Book-keeper/backend/pdfs/Introduction.pdf"))
+  asyncio.run(podcast("/Users/afnan/Developer/Book-keeper/backend/pdfs/image-based-pdf-sample.pdf"))

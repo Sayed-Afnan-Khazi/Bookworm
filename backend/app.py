@@ -18,13 +18,13 @@ import pymongo
 import json
 client = pymongo.MongoClient(os.getenv('MONGO_URI'))
 
-db = client['Book-keeper']
+db = client['Bookworm']
 users = db['users']
 notebooks = db['notebooks']
 chats = db['chats']
 
 if db is None:
-    raise Warning("The database, Book-keeper does not exist. Please check if the database is online and has been set up correctly.")
+    raise Warning("The database, Bookworm does not exist. Please check if the database is online and has been set up correctly.")
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_SECRET_KEY = os.getenv('GOOGLE_SECRET_KEY')
@@ -200,7 +200,7 @@ def create_chat():
         'notebook_id': nb['_id'],
         'name': chat_name,
         'lastModified': time.time_ns(),
-        'chat_history': ['Hello there!']
+        'chat_history': [{"role":"model","parts":["Hello there! I am Bookworm, your AI assistant. How can I help you today?"]}]
     }
 
     new_chat_id = chats.insert_one(new_chat).inserted_id
@@ -236,6 +236,16 @@ def get_chat(chat_id):
         },
         {"$unwind": "$notebook"},  # Convert resulting "notebook" array to object so that we can access it easily
         {"$match": {"notebook.owner": ObjectId(user['_id'])}},  # Check ownership
+        # Project/"forming the output" as need
+        {
+            "$project": {
+                "name": 1,
+                "notebook_id": "$notebook_id",
+                "notebook_name": "$notebook.name",
+                "chat_history": 1,
+                "lastModified": 1
+            }
+        }
     ]))
 
     if not chat:
@@ -280,50 +290,103 @@ def handle_question(data):
         return jsonify({'error':"This chat either doesn't exist or you're not allowed to access it."}),401
     
     chat_history = chat[0]['chat_history']
+    print(chat_history)
+    nb_id = chat[0]['notebook_id']
 
     if not question:
         emit('error', {'message': 'No question received'})
         return
-    try:
-        ans = answer_question(question_text=question['parts'][0],history=chat_history)
-        # Save the question in the chat history
-        chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"user","parts":[question['parts'][0]]}}})
-        complete_ans = ''
-        for chunk in ans:
-            print("sending from socket",chunk.text)
-            complete_ans += chunk.text
-            emit('answer_chunk', {'text': chunk.text})
-        # Save the answer to the chat history
-        chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"assistant","parts":[complete_ans]}}})
-    except Exception as e:
-        emit('error', {'message': str(e)})
+    # try:
+    ans = answer_question(question_text=question['parts'][0],history=chat_history,global_files_location=f"./data/user_{user['_id']}/notebook_{nb_id}/notebook_global_files",chat_files_location=f"./data/user_{user['_id']}/notebook_{nb_id}/chat_{chat_id}_files")
+    # Save the question in the chat history
+    chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"user","parts":[question['parts'][0]]}}})
+    complete_ans = ''
+    for chunk in ans:
+        complete_ans += chunk.text
+        emit('answer_chunk', {'text': chunk.text})
+    # Save the answer to the chat history
+    chats.update_one({'_id': ObjectId(chat_id)}, {'$push': {'chat_history': {"role":"model","parts":[complete_ans]}}})
+    # except Exception as e:
+    #     emit('error', {'message': str(e)})
 
 
-
-# @app.route('/api/chat/upload',methods=["POST"])
-# @jwt_required(locations=['headers'])
-# def upload_chat_file():
-#     # Check if the file was sent or not
-#     if 'file' not in request.files or request.files['file'].filename == '':
-#         return jsonify({"error":'A file was not sent with the request.'}), 400
+@app.route('/api/notebook/upload',methods=["POST"])
+@jwt_required(locations=['headers'])
+def upload_notebook_file():
+    # Check if the file was sent or not
+    if not request.files.getlist('files'):
+        return jsonify({"error":'A file was not sent with the request.'}), 400
     
-#     current_user = get_jwt_identity()
+    current_user = get_jwt_identity()
 
-#     # Get the user and request data
-#     user = users.find_one({'email': current_user})
-#     user_id = user['_id']
-#     req_data = request.get_json()
-#     chat_id = req_data.get('chat_id')
-#     notebook_id = req_data.get('notebook_id')
+    # Get the user and request data
+    user = users.find_one({'email': current_user})
+    user_id = user['_id']
+    req_data = request.form
+    notebook_id = req_data.get('notebook_id')
+
+    # Make sure that data is received and is valid
+    if not notebook_id or not ObjectId.is_valid(notebook_id):
+        return jsonify({'error':"This notebook either doesn't exist or you're not allowed to access it."}),401
     
-#     # Save the file
-#     file = request.files['file']
-#     if is_file_allowed(file.filename):
-#         file_name = secure_filename(file.filename)
-#         file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+user_id,'notebook_'+notebook_id,'chat_'+chat_id+'_files',file_name))
-#         return jsonify('File saved'),200
+    # Check if the notebook exists and belongs to the user
+    nb = notebooks.find_one({'_id':ObjectId(notebook_id),'owner':user_id})
+    if not nb:
+        return jsonify({'error':"This notebook either doesn't exist or you're not allowed to access it."}),401
 
-#     return jsonify("Something isn't right..."), 500
+
+    # Save the file
+    # try:
+    files = request.files.getlist('files')
+    for file in files:
+        if is_file_allowed(file.filename):
+            file_name = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+str(user_id),'notebook_'+str(notebook_id)+'/notebook_global_files',file_name))
+    else:
+        return jsonify('File saved'),200
+    # except Exception as e:
+    #     print(e)
+    # return jsonify("Something isn't right..."), 500
+
+
+@app.route('/api/chat/upload',methods=["POST"])
+@jwt_required(locations=['headers'])
+def upload_chat_file():
+    # Check if the file was sent or not
+    if 'file' not in request.files or request.files['file'].filename == '':
+        return jsonify({"error":'A file was not sent with the request.'}), 400
+    
+    current_user = get_jwt_identity()
+
+    # Get the user and request data
+    user = users.find_one({'email': current_user})
+    user_id = user['_id']
+    req_data = request.get_json()
+    chat_id = req_data.get('chat_id')
+    notebook_id = req_data.get('notebook_id')
+
+    # Make sure that data is received and is valid
+    if not notebook_id or not ObjectId.is_valid(notebook_id) or not chat_id or not ObjectId.is_valid(chat_id):
+        return jsonify({'error':"This notebook/chat either doesn't exist or you're not allowed to access it."}),401
+    
+    # Check if the notebook exists and belongs to the user
+    nb = notebooks.find_one({'_id':ObjectId(notebook_id),'owner':user['_id']})
+    if not nb:
+        return jsonify({'error':"This notebook/chat either doesn't exist or you're not allowed to access it."}),401
+
+    # Check if the chat exists and belongs to the notebook
+    chat =  chats.find_one({'_id':ObjectId(chat_id),'notebook_id':ObjectId(notebook_id)})
+    if not chat:
+        return jsonify({'error':"This notebook/chat either doesn't exist or you're not allowed to access it."}),401
+    
+    # Save the file
+    file = request.files['file']
+    if is_file_allowed(file.filename):
+        file_name = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'],'user_'+user_id,'notebook_'+notebook_id,'chat_'+chat_id+'_files',file_name))
+        return jsonify('File saved'),200
+
+    return jsonify("Something isn't right..."), 500
 
 
 

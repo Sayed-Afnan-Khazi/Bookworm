@@ -4,7 +4,6 @@ import { useToast } from '../hooks/Toast';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
-  Card,
   Typography,
   Table,
   TableBody,
@@ -72,6 +71,7 @@ const NotebooksList = () => {
   }
   useEffect(() => {
     getNoteBooks();
+    // eslint-disable-next-line
   }, []);
 
   const handleNotebookClick = (notebookId) => {

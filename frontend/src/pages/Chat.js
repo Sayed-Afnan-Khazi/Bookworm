@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/Auth';
 import { useToast } from '../hooks/Toast';
 import { useNavigate } from 'react-router-dom';
 import { Typography } from '@mui/material';
+import Link from '@mui/material/Link';
 import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';
 
 const grey = {
@@ -57,7 +58,7 @@ const Textarea = styled(BaseTextareaAutosize)(
 const QuestionPage = () => {
     const chat_id = useParams().chat_id;
     const { user_data } = useAuth();
-    const { setErrorToast, setSuccessToast } = useToast();
+    const { setErrorToast } = useToast();
     const navigate = useNavigate();
 
 
@@ -66,6 +67,8 @@ const QuestionPage = () => {
 
     const [isLoading, setIsLoading] = useState(false); // Add loading state
 
+    const [notebookName, setNotebookName] = useState('');
+    const [notebook_id, setNotebookId] = useState('');
     const [chatName,setChatName] = useState('')
     const [chatHistory, setChatHistory] = useState([]);
     const chatContainerRef = useRef(null);
@@ -83,11 +86,14 @@ const QuestionPage = () => {
         console.log('Chat DATA',data)
         setChatHistory(data.chat_history);
         setChatName(data.name);
+        setNotebookName(data.notebook_name);
+        setNotebookId(data.notebook_id);
     }
 
     // On load -> Get chat history and files
     useEffect(()=> {
         getChatDetails()
+        // eslint-disable-next-line
     },[])
 
     useEffect(() => {
@@ -110,6 +116,7 @@ const QuestionPage = () => {
         });
         setSocket(newSocket);
         return () => newSocket.close();
+        // eslint-disable-next-line
     }, []);
 
     // useEffect to scroll to bottom whenever chatHistory changes
@@ -129,7 +136,7 @@ const QuestionPage = () => {
     const onFormSubmit = (event) => {
         event.preventDefault();
         setQuestionText({...questionText,"parts":['']});
-        setChatHistory([...chatHistory, questionText, {"role":"assistant","parts":['']}]);
+        setChatHistory([...chatHistory, questionText, {"role":"model","parts":['']}]);
         console.log("Sending to socket:",questionText)
         setIsLoading(true); // Set loading to true when sending question
         socket.emit('ask_question', {...questionText,chat_id,access_token:user_data.access_token_cookie});
@@ -137,7 +144,12 @@ const QuestionPage = () => {
 
     return (
           <Container sx={{height: '90vh'}}>
-              <Typography variant="h4" component="h4" sx={{padding: '20px 7vw 15px'}}>
+            <Typography variant="h6">
+                <Link href={`/notebook/${notebook_id}`} underline="hover" color="inherit">
+                    {notebookName ? notebookName : "Back to Notebook"} &gt;
+                    </Link>
+                </Typography>
+              <Typography variant="h4" component="h4" sx={{padding: '0px 7vw 15px'}}>
               {chatName ? chatName : "Loading"}
               </Typography>
             <Container maxWidth="md" ref={chatContainerRef} style={{
@@ -150,7 +162,7 @@ const QuestionPage = () => {
                 overflowY: 'scroll'
             }}>
                 {chatHistory && chatHistory.map((chatText) => {
-                    if (chatText.role==="assistant") {
+                    if (chatText.role==="model") {
                         return (
                             <Container sx={{display:'flex',flexDirection: 'row', alignItems: 'flex-end',marginBottom: 2}}>
                                 <Avatar sx={{height:'30px', width:'30px',margin:'0px 7px 0px 0px'}} > <LocalLibraryIcon color='primary'></LocalLibraryIcon> </Avatar>

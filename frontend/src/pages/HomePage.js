@@ -21,7 +21,7 @@ const HomePage = () => {
     return (
         <Container maxWidth="md" sx={{ textAlign: 'center', mt: 8 }}>
             <Typography variant="h1" component="h1" gutterBottom>
-                Book-Keeper
+                Bookworm
             </Typography>
             <Typography variant="h5" component="p" gutterBottom>
                 The better way to study, with AI.
